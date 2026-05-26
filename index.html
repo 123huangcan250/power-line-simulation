@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高压输电线下空间工频电场动态可视化仿真系统</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans CJK SC", sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #eef2f5;
+            padding-bottom: 15px;
+        }
+        header h1 {
+            color: #1e3a8a;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        header p {
+            color: #64748b;
+            font-size: 14px;
+        }
+        .main-layout {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        .control-panel {
+            flex: 1;
+            min-width: 320px;
+            background-color: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .control-panel h2 {
+            font-size: 16px;
+            color: #0f172a;
+            margin-bottom: 15px;
+            border-left: 4px solid #2563eb;
+            padding-left: 8px;
+        }
+        .slider-group {
+            margin-bottom: 20px;
+        }
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #475569;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .slider-label span.value {
+            color: #2563eb;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #cbd5e1;
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #2563eb;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #1d4ed8;
+        }
+        .checkbox-group {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #475569;
+        }
+        .visualization-panel {
+            flex: 2;
+            min-width: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .canvas-container {
+            position: relative;
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+        canvas {
+            display: block;
+            cursor: crosshair;
+        }
+        .info-overlay {
+            width: 100%;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            padding: 10px 15px;
+            border-radius: 0 0 8px 8px;
+            font-family: monospace;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            margin-top: -5px;
+        }
+        .legend-container {
+            width: 100%;
+            margin-top: 15px;
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+        .legend-title {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+        .legend-bar {
+            height: 15px;
+            background: linear-gradient(to right, #0000ff, #00ffff, #00ff00, #ffff00, #ff0000);
+            border-radius: 3px;
+        }
+        .legend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 3px;
+            padding: 0 5px;
+        }
+        .self-statement {
+            margin-top: 20px;
+            padding-top: 25px;
+            border-top: 2px solid #eef2f5;
+        }
+        .self-statement h2 {
+            color: #1e3a8a;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        .statement-box {
+            background-color: #f8fafc;
+            border-left: 4px solid #1e3a8a;
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 15px;
+        }
+        .statement-box h3 {
+            font-size: 14px;
+            color: #0f172a;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .statement-box p {
+            font-size: 13px;
+            color: #334155;
+            text-align: justify;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>高压输电线下空间工频电场动态可视化系统</h1>
+        <p>基于镜像法与复数线电荷叠加原理的实时多点二维电场矢量及强度计算平台</p>
+    </header>
+
+    <div class="main-layout">
+        <!-- 左侧控制面板 -->
+        <div class="control-panel">
+            <h2>系统参数调节</h2>
+            
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>导线对地高度 (h)</span>
+                    <span><span id="h-val">12.19</span> m</span>
+                </div>
+                <input type="range" id="slider-h" min="5" max="25" step="0.1" value="12.19">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>线电压有效值 (U_line)</span>
+                    <span><span id="u-val">500</span> kV</span>
+                </div>
+                <input type="range" id="slider-u" min="110" max="1000" step="10" value="500">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label">
+                    <span>导线相间距 (d)</span>
+                    <span><span id="d-val">13.72</span> m</span>
+                </div>
+                <input type="range" id="slider-d" min="5" max="20" step="0.1" value="13.72">
+            </div>
+
+            <h2>可视化选项</h2>
+            <div class="checkbox-group">
+                <input type="checkbox" id="chk-heatmap" checked>
+                <label for="chk-heatmap">显示全景电场强度云图 (RMS强度)</label>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="chk-arrows" checked>
+                <label for="chk-arrows">显示瞬时电场矢量箭头 (随时间旋转/摆动)</label>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="chk-animate" checked>
+                <label for="chk-animate">开启工频周期时间动态演变 (50Hz模拟)</label>
+            </div>
+            
+            <div style="margin-top:20px; font-size:12px; color:#64748b; line-height:1.4;">
+                <strong>操作提示：</strong><br>
+                1. 拖动上方滑块可实时改变物理场景结构，空间电场及所有矢量箭头将同步响应。<br>
+                2. 将鼠标移动到右侧渲染画布上，可实时观测特定坐标点的电场强度数值与分量。
+            </div>
+        </div>
+
+        <!-- 右侧可视化画布 -->
+        <div class="visualization-panel">
+            <div class="canvas-container">
+                <canvas id="fieldCanvas" width="750" height="450"></canvas>
+                <div class="info-overlay">
+                    <span id="mouse-coord">鼠标坐标: X = 0.00m, Y = 0.00m</span>
+                    <span id="mouse-field">电场强度: E = 0.00 kV/m</span>
+                </div>
+            </div>
+            
+            <div class="legend-container">
+                <div class="legend-title">工频电场强度有效值云图颜色图例 (kV/m)</div>
+                <div class="legend-bar"></div>
+                <div class="legend-labels">
+                    <span>0.0 kV/m (极弱)</span>
+                    <span>2.5 kV/m</span>
+                    <span>5.0 kV/m</span>
+                    <span>7.5 kV/m</span>
+                    <span>10.0+ kV/m (强电场区)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设计者自述 -->
+    <div class="self-statement">
+        <h2>设计者自述 (Designer's Self-Statement)</h2>
+        
+        <div class="statement-box">
+            <h3>1. 知识映射 (Knowledge Mapping)</h3>
+            <p>本作品严格映射《电磁场与电磁波》课程中关于“静电场”章节的核心物理理论。高压输电线与大地的边界条件可等效为理想导体平面。系统采用<strong>镜像法原理</strong>，将三相分裂导线等效为地下对称分布、电荷量相反的镜像线电荷偶极子。结合<strong>部分电容与电位系数矩阵</strong>（[U] = [α][Q]），由于多维三相传输线在空间中存在复杂的相互屏蔽与耦合，系统通过实时求解矩阵逆运算，得到各相线电荷密度的复数复相量。最终依据<strong>场强叠加原理</strong>，计算空间任一点由6条无限长线电荷共同产生的水平分量 Ex 与垂直分量 Ey，实现了从课本公式到空间离散数值网格的精准转化。</p>
+        </div>
+
+        <div class="statement-box">
+            <h3>2. 设计逻辑 (Design Logic)</h3>
+            <p>为了打破传统二维静态公式的枯燥性，本设计选择基于HTML5 Canvas构建自适应交互式动态渲染平台。之所以引入<strong>“动态云图+时间相位演变箭头”</strong>的复合呈现方式，是因为三相工频电场在空间中并非简单的脉动场，而是一个随时间旋转、椭圆极化的旋转矢量场。全景热力云图（Heatmap）直观展示了空间电场强度有效值（RMS）的宏观空间分布规律，清晰揭示了“线下最大、向两侧衰减”的环保安全边界；而可随时间流逝（ωt周期旋转）的瞬时矢量箭头阵列，则将抽象、肉眼不可见的旋转工频电场变成了跃然屏上的生动图景。通过滑块实时改变高度 h 和电压，用户能在一微秒内看到场强强弱随距离、源强的剧烈响应，提供了无与伦比的直观物理对比与探索体验。</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('fieldCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 控件读取
+    const sliderH = document.getElementById('slider-h');
+    const sliderU = document.getElementById('slider-u');
+    const sliderD = document.getElementById('slider-d');
+    const valH = document.getElementById('h-val');
+    const valU = document.getElementById('u-val');
+    const valD = document.getElementById('d-val');
+    
+    const chkHeatmap = document.getElementById('chk-heatmap');
+    const chkArrows = document.getElementById('chk-arrows');
+    const chkAnimate = document.getElementById('chk-animate');
+    
+    const lblCoord = document.getElementById('mouse-coord');
+    const lblField = document.getElementById('mouse-field');
+
+    // 固定物理常数
+    const eps0 = 8.854187817e-12;
+    const n = 4;
+    const r = 0.0148;
+    const s = 0.457;
+
+    // 空间范围映射：画布宽高映射到实物空间
+    // X范围: -30m 到 +30m, 共60m宽
+    // Y范围: 0m 到 24m (地面到空中), 共24m高
+    const xMin = -30, xMax = 30;
+    const yMin = 0, yMax = 24;
+
+    let timePhase = 0; // wt 初始相位
+    let mouseX = 0, mouseY = 1.0; // 默认鼠标物理坐标
+
+    // 坐标转换：物理坐标 -> 画布像素坐标
+    function toPixelX(x) {
+        return ((x - xMin) / (xMax - xMin)) * canvas.width;
+    }
+    function toPixelY(y) {
+        // 画布y向下，物理y向上，所以需要反转
+        return canvas.height - ((y - yMin) / (yMax - yMin)) * canvas.height;
+    }
+
+    // 坐标反转换：画布像素坐标 -> 物理坐标
+    function toPhysicalX(px) {
+        return xMin + (px / canvas.width) * (xMax - xMin);
+    }
+    function toPhysicalY(py) {
+        return yMin + ((canvas.height - py) / canvas.height) * (yMax - yMin);
+    }
+
+    // 3x3实矩阵求逆
+    function invert3x3(A) {
+        let det = A[0][0]*(A[1][1]*A[2][2] - A[1][2]*A[2][1]) -
+                  A[0][1]*(A[1][0]*A[2][2] - A[1][2]*A[2][0]) +
+                  A[0][2]*(A[1][0]*A[2][1] - A[1][1]*A[2][0]);
+        if (Math.abs(det) < 1e-22) return null;
+        let invdet = 1 / det;
+        return [
+            [
+                (A[1][1]*A[2][2] - A[1][2]*A[2][1]) * invdet,
+                (A[0][2]*A[2][1] - A[0][1]*A[2][2]) * invdet,
+                (A[0][1]*A[1][2] - A[0][2]*A[1][1]) * invdet
+            ],
+            [
+                (A[1][2]*A[2][0] - A[1][0]*A[2][2]) * invdet,
+                (A[0][0]*A[2][2] - A[0][2]*A[2][0]) * invdet,
+                (A[0][2]*A[1][0] - A[0][0]*A[1][2]) * invdet
+            ],
+            [
+                (A[1][0]*A[2][1] - A[1][1]*A[2][0]) * invdet,
+                (A[0][1]*A[2][0] - A[0][0]*A[2][1]) * invdet,
+                (A[0][0]*A[1][1] - A[0][1]*A[1][0]) * invdet
+            ]
+        ];
+    }
+
+    // 核心物理电场计算函数
+    function computeFieldAt(x, y, params) {
+        const { h, d, Q_real, Q_imag } = params;
+        const X_wire = [d, 0, -d];
+
+        let Ex_r = 0, Ex_i = 0;
+        let Ey_r = 0, Ey_i = 0;
+        const k = 1 / (2 * Math.PI * eps0);
+
+        for (let i = 0; i < 3; i++) {
+            let dx = x - X_wire[i];
+            
+            // 真实线电荷贡献 (高度为 h)
+            let dy_real = y - h;
+            let d2_real = dx*dx + dy_real*dy_real;
+            if(d2_real < 0.05) d2_real = 0.05; // 防止极点奇异
+            
+            // 镜像线电荷贡献 (高度为 -h, 电荷变号)
+            let dy_mirror = y + h;
+            let d2_mirror = dx*dx + dy_mirror*dy_mirror;
+            if(d2_mirror < 0.05) d2_mirror = 0.05;
+
+            let coeff_x = (dx / d2_real) - (dx / d2_mirror);
+            let coeff_y = (dy_real / d2_real) - (dy_mirror / d2_mirror);
+
+            Ex_r += Q_real[i] * coeff_x;
+            Ex_i += Q_imag[i] * coeff_x;
+            Ey_r += Q_real[i] * coeff_y;
+            Ey_i += Q_imag[i] * coeff_y;
+        }
+
+        Ex_r *= k; Ex_i *= k;
+        Ey_r *= k; Ey_i *= k;
+
+        // RMS 模值幅值
+        let Ex_mag = Math.sqrt(Ex_r*Ex_r + Ex_i*Ex_i);
+        let Ey_mag = Math.sqrt(Ey_r*Ey_r + Ey_i*Ey_i);
+        let E_rms = Math.sqrt(Ex_mag*Ex_mag + Ey_mag*Ey_mag);
+
+        // 结合当前相位 timePhase(wt) 的瞬时电场分量
+        let cos_wt = Math.cos(timePhase);
+        let sin_wt = Math.sin(timePhase);
+        // E_inst = sqrt(2) * (E_real * cos(wt) - E_imag * sin(wt))
+        let Ex_inst = Math.sqrt(2) * (Ex_r * cos_wt - Ex_i * sin_wt);
+        let Ey_inst = Math.sqrt(2) * (Ey_r * cos_wt - Ey_i * sin_wt);
+
+        return { E_rms, Ex_inst, Ey_inst };
+    }
+
+    // 热力图颜色映射：由弱到强依次为 蓝 -> 青 -> 绿 -> 黄 -> 红
+    function getColorForField(E_rms) {
+        // 将电场强度(V/m)归一化，设定10 kV/m (10000 V/m) 为红色上限
+        let maxE = 10000;
+        let norm = Math.min(E_rms / maxE, 1.0);
+        
+        let r = 0, g = 0, b = 0;
+        if (norm < 0.25) {
+            b = 255;
+            g = Math.floor(norm * 4 * 255);
+        } else if (norm < 0.5) {
+            g = 255;
+            b = Math.floor((0.5 - norm) * 4 * 255);
+        } else if (norm < 0.75) {
+            g = 255;
+            r = Math.floor((norm - 0.5) * 4 * 255);
+        } else {
+            r = 255;
+            g = Math.floor((1.0 - norm) * 4 * 255);
+        }
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    // 渲染循环主函数
+    function render() {
+        // 1. 获取最新滑块物理输入
+        const h = parseFloat(sliderH.value);
+        const uLine = parseFloat(sliderU.value);
+        const d = parseFloat(sliderD.value);
+
+        valH.textContent = h.toFixed(2);
+        valU.textContent = uLine.toFixed(0);
+        valD.textContent = d.toFixed(2);
+
+        // 2. 预先计算等效半径与电荷密度矩阵 Q 
+        const R_radius = s / Math.sqrt(2);
+        const Ri = Math.pow(n * r * Math.pow(R_radius, n - 1), 1 / n);
+        const uPhaseRMS = (uLine * 1.05 * 1000) / Math.sqrt(3);
+
+        // 列写电位系数矩阵 alpha
+        let alpha = [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]
+        ];
+        const k_alpha = 1 / (2 * Math.PI * eps0);
+        alpha[0][0] = alpha[1][1] = alpha[2][2] = k_alpha * Math.log((2 * h) / Ri);
+        
+        let L12_prime = Math.sqrt(d*d + 4*h*h);
+        alpha[0][1] = alpha[1][0] = alpha[1][2] = alpha[2][1] = k_alpha * Math.log(L12_prime / d);
+        
+        let L13_prime = Math.sqrt(4*d*d + 4*h*h);
+        alpha[0][2] = alpha[2][0] = k_alpha * Math.log(L13_prime / (2*d));
+
+        let alpha_inv = invert3x3(alpha);
+
+        // 相电压相量有效值 (A相0°, B相120°, C相-120°)
+        let U_real = [uPhaseRMS, uPhaseRMS * Math.cos(Math.PI*2/3), uPhaseRMS * Math.cos(-Math.PI*2/3)];
+        let U_imag = [0, uPhaseRMS * Math.sin(Math.PI*2/3), uPhaseRMS * Math.sin(-Math.PI*2/3)];
+
+        // 矩阵乘法求解 Q = alpha_inv * U
+        let Q_real = [0, 0, 0], Q_imag = [0, 0, 0];
+        if (alpha_inv) {
+            for(let i=0; i<3; i++) {
+                for(let j=0; j<3; j++) {
+                    Q_real[i] += alpha_inv[i][j] * U_real[j];
+                    Q_imag[i] += alpha_inv[i][j] * U_imag[j];
+                }
+            }
+        }
+
+        const params = { h, d, Q_real, Q_imag };
+
+        // 3. 清理画布
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 4. 绘制全景云图层 (Heatmap)
+        if (chkHeatmap.checked) {
+            const gridX = 150; // 水平离散网格数
+            const gridY = 90;  // 垂直离散网格数
+            const cellW = canvas.width / gridX;
+            const cellH = canvas.height / gridY;
+
+            for (let i = 0; i < gridX; i++) {
+                for (let j = 0; j < gridY; j++) {
+                    // 获取格子中心的像素坐标并转换为物理坐标
+                    let px = (i + 0.5) * cellW;
+                    let py = (j + 0.5) * cellH;
+                    let physX = toPhysicalX(px);
+                    let physY = toPhysicalY(py);
+
+                    let { E_rms } = computeFieldAt(physX, physY, params);
+                    ctx.fillStyle = getColorForField(E_rms);
+                    // 填充对应网格矩形像素
+                    ctx.fillRect(i * cellW, j * cellH, cellW + 0.5, cellH + 0.5);
+                }
+            }
+        }
+
+        // 5. 绘制瞬时矢量箭头阵列层
+        if (chkArrows.checked) {
+            const arrowSpacingX = 25; // 减小间距，增加箭头数量
+            const arrowSpacingY = 25;
+            ctx.lineWidth = 1.2;
+
+            for (let px = arrowSpacingX/2; px < canvas.width; px += arrowSpacingX) {
+                for (let py = arrowSpacingY/2; py < canvas.height; py += arrowSpacingY) {
+                    let physX = toPhysicalX(px);
+                    let physY = toPhysicalY(py);
+
+                    // 略过地表以下
+                    if (physY < 0.1) continue;
+
+                    let { E_rms, Ex_inst, Ey_inst } = computeFieldAt(physX, physY, params);
+                    
+                    // 瞬时场强长度进行几何缩放以利于视察
+                    let E_inst_len = Math.sqrt(Ex_inst*Ex_inst + Ey_inst*Ey_inst);
+                    // 降低过滤条件，避免过滤掉正常箭头
+                    if (E_inst_len < 1) continue;
+
+                    // 箭头绘制长度限制，使其看起来整齐美观
+                    let maxArrowLen = 14;
+                    let scale = Math.min(E_inst_len / 5000, 1.0) * maxArrowLen;
+                    if(scale < 2) scale = 2; // 给一个基础可辨别长度
+
+                    let dx = (Ex_inst / E_inst_len) * scale;
+                    let dy = (Ey_inst / E_inst_len) * scale; // 物理y向上
+
+                    // 转换为画布像素坐标增量
+                    let pDx = dx;
+                    let pDy = -dy; // 画布y向下，物理y向上，所以变号
+
+                    // 箭头颜色采用白、灰高对比色反衬背景
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+                    ctx.beginPath();
+                    ctx.moveTo(px, py);
+                    ctx.lineTo(px + pDx, py + pDy);
+                    ctx.stroke();
+
+                    // 绘制小箭头帽
+                    let angle = Math.atan2(pDy, pDx);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                    ctx.beginPath();
+                    ctx.moveTo(px + pDx, py + pDy);
+                    ctx.lineTo(px + pDx - 4 * Math.cos(angle - Math.PI / 6), py + pDy - 4 * Math.sin(angle - Math.PI / 6));
+                    ctx.lineTo(px + pDx - 4 * Math.cos(angle + Math.PI / 6), py + pDy - 4 * Math.sin(angle + Math.PI / 6));
+                    ctx.fill();
+                }
+            }
+        }
+
+        // 6. 绘制高压输电三相导线实体圆圈标记
+        const X_wire = [d, 0, -d];
+        const phaseNames = ['A', 'B', 'C'];
+        const phaseColors = ['#ef4444', '#eab308', '#2563eb']; // 红、黄、蓝经典三相电色
+
+        for (let i = 0; i < 3; i++) {
+            let pX = toPixelX(X_wire[i]);
+            let pY = toPixelY(h);
+
+            // 如果在线内展示
+            if(pY >= 0 && pY <= canvas.height) {
+                // 外侧发光圈
+                ctx.beginPath();
+                ctx.arc(pX, pY, 10, 0, 2 * Math.PI);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.fill();
+
+                // 核心导线圆
+                ctx.beginPath();
+                ctx.arc(pX, pY, 6, 0, 2 * Math.PI);
+                ctx.fillStyle = phaseColors[i];
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.fill();
+                ctx.stroke();
+
+                // 文本标签
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(phaseNames[i], pX, pY - 14);
+            }
+        }
+
+        // 7. 绘制地表线基准标识
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, toPixelY(0));
+        ctx.lineTo(canvas.width, toPixelY(0));
+        ctx.stroke();
+
+        // 8. 更新实时鼠标划过位置的特定点场强读数
+        let mouseFieldData = computeFieldAt(mouseX, mouseY, params);
+        lblCoord.textContent = `鼠标坐标: X = ${mouseX.toFixed(2)}m, Y = ${mouseY.toFixed(2)}m`;
+        lblField.textContent = `电场强度有效值: E = ${(mouseFieldData.E_rms / 1000).toFixed(3)} kV/m`;
+    }
+
+    // 鼠标移动监听事件更新物理坐标
+    canvas.addEventListener('mousemove', function (e) {
+        let rect = canvas.getBoundingClientRect();
+        let px = e.clientX - rect.left;
+        let py = e.clientY - rect.top;
+        mouseX = toPhysicalX(px);
+        mouseY = toPhysicalY(py);
+        if (mouseY < 0) mouseY = 0; // 限制在地表及以上
+    });
+
+    // 动态时间周期演进
+    function animationLoop() {
+        if (chkAnimate.checked) {
+            // 50Hz 工频：每秒50个周期，1个周期2*PI弧度。
+            // 模拟动画步长更新相位
+            timePhase += 0.08; 
+            if (timePhase > 2 * Math.PI) {
+                timePhase -= 2 * Math.PI;
+            }
+        }
+        render();
+        requestAnimationFrame(animationLoop);
+    }
+
+    // 绑定事件处理器实现无延迟即时刷新
+    [sliderH, sliderU, sliderD, chkHeatmap, chkArrows].forEach(elem => {
+        elem.addEventListener('input', render);
+        elem.addEventListener('change', render);
+    });
+
+    // 系统初始化启动
+    animationLoop();
+</script>
+
+</body>
+</html>
